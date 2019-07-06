@@ -8,6 +8,8 @@ var usersRouter = require('./routes/users');
 
 var app = express();
 
+var data_log =[]
+
 app.use(logger('dev'));
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
@@ -58,5 +60,37 @@ app.use(function (req, res, next) {
     res.header("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept");
     next();
 })
+
+app.post('/post', function (req, res) {
+    
+    res.set('Content-Type', 'application/json');
+    // リクエストボディを出力
+    data_log.push(req.body)
+    exportCSV(data_log)
+})
+
+// jsonをcsvで保存するfunction
+function exportCSV(content) {
+    Object.assign = require('object-assign')
+    require('date-utils');
+    const Json2csvParser = require('json2csv').Parser;
+    var fs = require('fs');
+    var newLine = "\r\n";
+    var fields = ['time', 'code', 'runcount']
+
+    const json2csvParser = new Json2csvParser({
+        fields: fields,
+        header: false
+    });
+    const csv = json2csvParser.parse(content) + newLine;
+
+    fs.appendFile('log.csv', csv, 'utf8', function (err) {
+        if (err) {
+            console.log('保存できませんでした');
+        } else {
+            console.log('保存できました');
+        }
+    });
+}
 
 module.exports = app;

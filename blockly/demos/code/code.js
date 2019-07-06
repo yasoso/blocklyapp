@@ -27,15 +27,19 @@
  * Create a namespace for the application.
  */
 var Code = {};
+var countUpValue = 0
 
 //ログのjson
-var log = {
+var run_log ={
   time: null,
   code: null,
-  runcount:0,
+  runcount: 0,
+  blockcount:0
 }
+
 //実行ボタンカウント
-var run_count = 0
+var run_count = run_log.runcount
+
 
 /**
  * Lookup for names of supported languages.  Keys should be in ISO 639 format.
@@ -539,6 +543,9 @@ Code.runJS = function () {
   };
   var code = Blockly.JavaScript.workspaceToCode(Code.workspace);
   Blockly.JavaScript.INFINITE_LOOP_TRAP = null;
+
+  savelog(code)
+
   try {
     eval(code);
     
@@ -547,6 +554,7 @@ Code.runJS = function () {
     console.log("実行成功")
   }
 };
+
 
 /**
  * Discard all blocks from the workspace.
@@ -569,4 +577,47 @@ document.write('<script src="../../msg/js/' + Code.LANG + '.js"></script>\n');
 
 window.addEventListener('load', Code.init);
 
-// save csv file
+
+//カウントアップする関数 countUp の定義
+function runcountUp() {
+  //カウンタに 1 を加算
+  ++countUpValue;
+  run_count = countUpValue
+  run_log.runcount = run_count
+
+}
+
+//save csv file
+function savelog(code) {
+  //codeをjson
+  run_log.code = code
+  //workspaceのブロック数
+  run_log.blockcount = Code.workspace.getAllBlocks(true).length;
+
+  console.log(Code.workspace.getAllBlocks())
+  //時刻取得
+  var dt = new Date();
+  var g = dt.toLocaleString();
+  run_log.time = g
+  var data = run_log
+  console.log(run_log)
+
+  $.ajax({
+    type: "post", // method = "POST"
+    url: "/post", // POST送信先のURL
+    data: JSON.stringify(data), // JSONデータ本体
+    contentType: 'application/json', // リクエストの Content-Type
+    dataType: "json", // レスポンスをJSONとしてパースする
+    success: function (json_data) { // 200 OK時
+      // JSON Arrayの先頭が成功フラグ、失敗の場合2番目がエラーメッセージ
+      console.log("success");
+    },
+    error: function () { // HTTPエラー時
+      console.log("error");
+    }
+  });
+
+}
+
+
+  
