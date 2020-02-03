@@ -28,8 +28,9 @@
  */
 var Code = {};
 var countUpValue = 0
+var del_count = 0
 
-//ログのjson
+//実行ログのjson
 var run_log ={
   time: null,
   code: null,
@@ -37,9 +38,16 @@ var run_log ={
   blockcount:0
 }
 
-//実行ボタンカウント
-var run_count = run_log.runcount
+//定期保存のログ
+var interval_log = {
+  time: null,
+  code: null,
+  block_count: 0,
+  delete_count:0,
+  pageX: 0,
+  pageY: 0
 
+}
 
 /**
  * Lookup for names of supported languages.  Keys should be in ISO 639 format.
@@ -113,7 +121,6 @@ Code.getStringParamFromUrl = function (name, defaultValue) {
   var val = location.search.match(new RegExp('[?&]' + name + '=([^&]+)'));
   return val ? decodeURIComponent(val[1].replace(/\+/g, '%20')) : defaultValue;
 };
-
 /**
  * Get the language of this user from the URL.
  * @return {string} User's language.
@@ -165,7 +172,6 @@ Code.loadBlocks = function (defaultXml) {
     window.setTimeout(BlocklyStorage.restoreBlocks, 0);
   }
 };
-
 /**
  * Save the blocks and reload with a different language.
  */
@@ -204,6 +210,7 @@ Code.bindClick = function (el, func) {
   if (typeof el == 'string') {
     el = document.getElementById(el);
   }
+  
   el.addEventListener('click', func, true);
   el.addEventListener('touchend', func, true);
 };
@@ -295,8 +302,7 @@ Code.tabClick = function (clickedName) {
   Code.selected = clickedName;
   document.getElementById('tab_' + clickedName).className = 'tabon';
   // Show the selected pane.
-  document.getElementById('content_' + clickedName).style.visibility =
-    'visible';
+  document.getElementById('content_' + clickedName).style.visibility ='visible';
   Code.renderContent();
   if (clickedName == 'blocks') {
     Code.workspace.setVisible(true);
@@ -307,6 +313,7 @@ Code.tabClick = function (clickedName) {
 /**
  * Populate the currently selected pane with content generated from the blocks.
  */
+
 Code.renderContent = function () {
   var content = document.getElementById('content_' + Code.selected);
   // Initialize the pane.
@@ -356,6 +363,7 @@ Code.attemptCodeGeneration = function (generator, prettyPrintType) {
 Code.checkAllGeneratorFunctionsDefined = function (generator) {
   var blocks = Code.workspace.getAllBlocks(false);
   var missingBlockGenerators = [];
+
   for (var i = 0; i < blocks.length; i++) {
     var blockType = blocks[i].type;
     if (!generator[blockType]) {
@@ -364,7 +372,7 @@ Code.checkAllGeneratorFunctionsDefined = function (generator) {
       }
     }
   }
-
+  console.log(missingBlockGenerators)
   var valid = missingBlockGenerators.length == 0;
   if (!valid) {
     var msg = 'The generator code for the following blocks not specified for '
@@ -412,6 +420,7 @@ Code.init = function () {
   // into `Blockly.Msg`.
   // TODO: Clean up the message files so this is done explicitly instead of
   // through this for-loop.
+
   for (var messageKey in MSG) {
     if (messageKey.indexOf('cat') == 0) {
       Blockly.Msg[messageKey.toUpperCase()] = MSG[messageKey];
@@ -442,7 +451,6 @@ Code.init = function () {
         wheel: true
       }
     });
-
   // Add to reserved word list: Local variables in execution environment (runJS)
   // and the infinite loop detection function.
   Blockly.JavaScript.addReservedWords('code,timeouts,checkTimeout');
@@ -457,7 +465,7 @@ Code.init = function () {
   Code.tabClick(Code.selected);
 
   Code.bindClick('trashButton',
-    function () { Code.discard(); Code.renderContent(); });
+    function () { Code.discard(); Code.renderContent();  });
   Code.bindClick('runButton', Code.runJS);
   // Disable the link button if page isn't backed by App Engine storage.
   var linkButton = document.getElementById('linkButton');
@@ -505,6 +513,7 @@ Code.initLanguage = function () {
     return 0;
   };
   languages.sort(comp);
+
   // Populate the language selection menu.
   var languageMenu = document.getElementById('languageMenu');
   languageMenu.options.length = 0;
@@ -517,13 +526,13 @@ Code.initLanguage = function () {
     }
     languageMenu.options.add(option);
   }
+
   languageMenu.addEventListener('change', Code.changeLanguage, true);
 
   // Inject language strings.
   document.title += ' ' + MSG['title'];
   document.getElementById('title').textContent = MSG['title'];
   document.getElementById('tab_blocks').textContent = MSG['blocks'];
-
   document.getElementById('linkButton').title = MSG['linkTooltip'];
   document.getElementById('runButton').title = MSG['runTooltip'];
   document.getElementById('trashButton').title = MSG['trashTooltip'];
@@ -548,10 +557,12 @@ Code.runJS = function () {
 
   try {
     eval(code);
+    console.log(String(code))
     
+
   } catch (e) {
     alert(MSG['badCode'].replace('%1', e));
-    console.log("実行成功")
+    
   }
 };
 
@@ -560,6 +571,7 @@ Code.runJS = function () {
  * Discard all blocks from the workspace.
  */
 Code.discard = function () {
+  DelcountUp();
   var count = Code.workspace.getAllBlocks(false).length;
   if (count < 2 ||
     window.confirm(Blockly.Msg['DELETE_ALL_BLOCKS'].replace('%1', count))) {
@@ -582,9 +594,12 @@ window.addEventListener('load', Code.init);
 function runcountUp() {
   //カウンタに 1 を加算
   ++countUpValue;
-  run_count = countUpValue
-  run_log.runcount = run_count
+}
 
+//カウントアップする関数 countUp の定義
+function DelcountUp() {
+  //カウンタに 1 を加算
+  ++del_count;
 }
 
 //save csv file
@@ -592,15 +607,14 @@ function savelog(code) {
   //codeをjson
   run_log.code = code
   //workspaceのブロック数
-  run_log.blockcount = Code.workspace.getAllBlocks(true).length;
+  run_log.blockcount = Code.workspace.getAllBlocks(false).length;
 
-  console.log(Code.workspace.getAllBlocks())
+  run_log.runcount = countUpValue
   //時刻取得
   var dt = new Date();
   var g = dt.toLocaleString();
   run_log.time = g
   var data = run_log
-  console.log(run_log)
 
   $.ajax({
     type: "post", // method = "POST"
@@ -616,8 +630,47 @@ function savelog(code) {
       console.log("error");
     }
   });
-
 }
 
+//---------
+// Save regularly
+//---------
 
-  
+const time_interval = 30000 //ms
+const carsol_interval = 1000 //ms
+
+setInterval(function () {
+  //時刻取得
+  var dt = new Date();
+  var g = dt.toLocaleString();
+  var code = Blockly.JavaScript.workspaceToCode(Code.workspace);
+  interval_log.code = code
+  interval_log.time = g
+  interval_log.block_count = Code.workspace.getAllBlocks(false).length;
+  interval_log.delete_count = del_count;
+  //マウスの軌跡取得
+  document.onmousemove = function (e) {
+    interval_log.pageX = e.pageX
+    interval_log.pageY = e.pageY
+    //console.log([e.pageY,e.pageY])
+  }
+  $.ajax({
+    type: "post", // method = "POST"
+    url: "/interval", // POST送信先のURL
+    data: JSON.stringify(interval_log), // JSONデータ本体
+    contentType: 'application/json', // リクエストの Content-Type
+    dataType: "json", // レスポンスをJSONとしてパースする
+    success: function (json_data) { // 200 OK時
+      // JSON Arrayの先頭が成功フラグ、失敗の場合2番目がエラーメッセージ
+      console.log("success");
+    },
+    error: function () { // HTTPエラー時
+      console.log("error");
+    }
+  });
+}, carsol_interval);
+
+// setInterval(function () {
+//   var code = Blockly.JavaScript.workspaceToCode(Code.workspace);
+//   interval_log.code = code
+// }, time_interval);
